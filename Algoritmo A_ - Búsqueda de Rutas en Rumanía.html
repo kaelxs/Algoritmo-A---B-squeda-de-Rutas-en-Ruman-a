@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Algoritmo A* - Rutas en Rumanía</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding-bottom: 2rem;
+        }
+        .jumbotron {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .map-container {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        #map {
+            width: 100%;
+            height: 500px;
+            border: 1px solid #dee2e6;
+            border-radius: 0.5rem;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            background-color: #ffffff;
+        }
+        .card {
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            margin-bottom: 1.5rem;
+            border: none;
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+        .card-header {
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+            font-weight: 600;
+        }
+        #searchTree {
+            width: 100%;
+            min-height: 200px;
+            padding: 1rem;
+            font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            white-space: pre;
+            overflow: auto;
+            background-color: #f8f9fa;
+            border-radius: 0.5rem;
+            border: 1px solid #dee2e6;
+        }
+        .path {
+            stroke: #dc3545;
+            stroke-width: 3;
+        }
+        .city-label {
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .edge-weight {
+            font-size: 10px;
+            fill: #6c757d;
+        }
+        .badge-heuristic {
+            background-color: #6f42c1;
+            color: white;
+            font-size: 85%;
+        }
+        .table-heuristic {
+            font-size: 0.9rem;
+        }
+        .btn-purple {
+            background-color: #6f42c1;
+            border-color: #6f42c1;
+            color: white;
+        }
+        .btn-purple:hover {
+            background-color: #5a32a3;
+            border-color: #5a32a3;
+            color: white;
+        }
+        .nav-tabs .nav-link.active {
+            border-bottom: 3px solid #6f42c1;
+            color: #6f42c1;
+            font-weight: 600;
+        }
+        .footer {
+            margin-top: 2rem;
+            padding: 1rem 0;
+            background-color: #343a40;
+            color: white;
+        }
+        .search-tree-container {
+            transition: all 0.3s ease;
+        }
+        .search-tree-container.collapsed {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-4">
+        <!-- Header/Jumbotron -->
+        <div class="jumbotron mb-4">
+            <div class="container">
+                <h1 class="display-4"><i class="bi bi-map"></i> Algoritmo A* - Búsqueda de Rutas en Rumanía</h1>
+                <p class="lead">Implementación interactiva de búsqueda de caminos óptimos utilizando el algoritmo A*</p>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Columna de controles -->
+            <div class="col-md-4 mb-4">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <i class="bi bi-gear-fill"></i> Controles
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="startCity" class="form-label">Ciudad de inicio:</label>
+                            <select id="startCity" class="form-select"></select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="endCity" class="form-label">Ciudad de destino:</label>
+                            <select id="endCity" class="form-select"></select>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button id="findPath" class="btn btn-primary">
+                                <i class="bi bi-lightning-fill"></i> Encontrar ruta óptima
+                            </button>
+                            <button id="stepByStep" class="btn btn-outline-primary">
+                                <i class="bi bi-arrow-right-square"></i> Ejecución paso a paso
+                            </button>
+                            <button id="nextStep" class="btn btn-success" disabled>
+                                <i class="bi bi-skip-forward"></i> Siguiente paso
+                            </button>
+                            <button id="reset" class="btn btn-secondary">
+                                <i class="bi bi-arrow-counterclockwise"></i> Reiniciar
+                            </button>
+                            <button id="toggleSearchTree" class="btn btn-purple">
+                                <i class="bi bi-diagram-3"></i> Mostrar/Ocultar Árbol
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Tabla de Heurísticas -->
+                <div class="card">
+                    <div class="card-header bg-purple text-white" style="background-color: #6f42c1;">
+                        <i class="bi bi-calculator"></i> Valores de la heurística h(n)
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-striped table-hover table-heuristic mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Ciudad</th>
+                                        <th>h(n)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="heuristicTable"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card-footer text-muted small">
+                        Distancias en línea recta a Bucarest
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Columna del mapa y resultados -->
+            <div class="col-md-8">
+                <!-- Mapa -->
+                <div class="card mb-4">
+                    <div class="card-header bg-info text-white">
+                        <i class="bi bi-geo-alt-fill"></i> Mapa de Rumanía
+                    </div>
+                    <div class="card-body p-2">
+                        <svg id="map"></svg>
+                    </div>
+                </div>
+                
+                <!-- Resultados -->
+                <div class="card mb-4">
+                    <div class="card-header bg-success text-white">
+                        <i class="bi bi-check-circle-fill"></i> Resultados
+                    </div>
+                    <div class="card-body">
+                        <div id="pathResult" class="mb-2"></div>
+                        <div id="costResult"></div>
+                    </div>
+                </div>
+                
+                <!-- Árbol de búsqueda -->
+                <div class="card search-tree-container">
+                    <div class="card-header bg-warning text-dark">
+                        <i class="bi bi-diagram-3-fill"></i> Árbol de búsqueda
+                    </div>
+                    <div class="card-body">
+                        <div id="searchTree"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Footer -->
+    <div class="footer mt-4">
+        <div class="container text-center">
+            <p class="mb-0">Implementación del Algoritmo A* para Búsqueda de Rutas en Rumanía</p>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // Datos del grafo (mapa de Rumanía)
+        const cities = {
+            "Arad": { x: 75, y: 75 },
+            "Zerind": { x: 75, y: 25 },
+            "Oradea": { x: 110, y: 25 },
+            "Sibiu": { x: 150, y: 100 },
+            "Timisoara": { x: 25, y: 125 },
+            "Lugoj": { x: 100, y: 170 },
+            "Mehadia": { x: 100, y: 220 },
+            "Dobreta": { x: 75, y: 270 },
+            "Craiova": { x: 180, y: 270 },
+            "Rimnicu Vilcea": { x: 200, y: 140 },
+            "Fagaras": { x: 250, y: 100 },
+            "Pitesti": { x: 270, y: 170 },
+            "Bucarest": { x: 350, y: 230 },
+            "Giurgiu": { x: 350, y: 290 },
+            "Urziceni": { x: 420, y: 200 },
+            "Hirsova": { x: 500, y: 180 },
+            "Eforie": { x: 520, y: 250 },
+            "Vaslui": { x: 450, y: 130 },
+            "Iasi": { x: 400, y: 70 },
+            "Neamt": { x: 320, y: 50 }
+        };
+
+        // Heurística: Distancia en línea recta a Bucarest
+        const heuristic = {
+            "Arad": 366,
+            "Bucarest": 0,
+            "Craiova": 160,
+            "Dobreta": 242,
+            "Eforie": 161,
+            "Fagaras": 176,
+            "Giurgiu": 77,
+            "Hirsova": 151,
+            "Iasi": 226,
+            "Lugoj": 244,
+            "Mehadia": 241,
+            "Neamt": 234,
+            "Oradea": 380,
+            "Pitesti": 100,
+            "Rimnicu Vilcea": 193,
+            "Sibiu": 253,
+            "Timisoara": 329,
+            "Urziceni": 80,
+            "Vaslui": 199,
+            "Zerind": 374
+        };
+
+        // Conexiones entre ciudades y sus distancias
+        const roads = [
+            { from: "Arad", to: "Zerind", distance: 75 },
+            { from: "Arad", to: "Sibiu", distance: 140 },
+            { from: "Arad", to: "Timisoara", distance: 118 },
+            { from: "Zerind", to: "Oradea", distance: 71 },
+            { from: "Oradea", to: "Sibiu", distance: 151 },
+            { from: "Sibiu", to: "Fagaras", distance: 99 },
+            { from: "Sibiu", to: "Rimnicu Vilcea", distance: 80 },
+            { from: "Timisoara", to: "Lugoj", distance: 111 },
+            { from: "Lugoj", to: "Mehadia", distance: 70 },
+            { from: "Mehadia", to: "Dobreta", distance: 75 },
+            { from: "Dobreta", to: "Craiova", distance: 120 },
+            { from: "Craiova", to: "Rimnicu Vilcea", distance: 146 },
+            { from: "Craiova", to: "Pitesti", distance: 138 },
+            { from: "Rimnicu Vilcea", to: "Pitesti", distance: 97 },
+            { from: "Fagaras", to: "Bucarest", distance: 211 },
+            { from: "Pitesti", to: "Bucarest", distance: 101 },
+            { from: "Bucarest", to: "Giurgiu", distance: 90 },
+            { from: "Bucarest", to: "Urziceni", distance: 85 },
+            { from: "Urziceni", to: "Hirsova", distance: 98 },
+            { from: "Hirsova", to: "Eforie", distance: 86 },
+            { from: "Urziceni", to: "Vaslui", distance: 142 },
+            { from: "Vaslui", to: "Iasi", distance: 92 },
+            { from: "Iasi", to: "Neamt", distance: 87 }
+        ];
+
+        // Crear un grafo bidireccional a partir de las conexiones
+        const graph = {};
+        
+        for (const city in cities) {
+            graph[city] = [];
+        }
+        
+        for (const road of roads) {
+            // Añadir conexión en ambas direcciones
+            graph[road.from].push({ city: road.to, distance: road.distance });
+            graph[road.to].push({ city: road.from, distance: road.distance });
+        }
+
+        // Variables globales para la ejecución paso a paso
+        let stepByStepMode = false;
+        let openSet = [];
+        let closedSet = [];
+        let pathFound = false;
+        let currentNode = null;
+        let searchTreeSteps = [];
+        let stepIndex = 0;
+
+        // Elementos del DOM
+        const mapSvg = document.getElementById('map');
+        const heuristicTable = document.getElementById('heuristicTable');
+        const startCitySelect = document.getElementById('startCity');
+        const endCitySelect = document.getElementById('endCity');
+        const findPathBtn = document.getElementById('findPath');
+        const stepByStepBtn = document.getElementById('stepByStep');
+        const nextStepBtn = document.getElementById('nextStep');
+        const resetBtn = document.getElementById('reset');
+        const toggleSearchTreeBtn = document.getElementById('toggleSearchTree');
+        const pathResultDiv = document.getElementById('pathResult');
+        const costResultDiv = document.getElementById('costResult');
+        const searchTreeDiv = document.getElementById('searchTree');
+        const searchTreeContainer = document.querySelector('.search-tree-container');
+
+        // Inicializar la aplicación
+        function init() {
+            // Dibujar el mapa
+            drawMap();
+            
+            // Llenar la tabla de heurísticas
+            fillHeuristicTable();
+            
+            // Llenar los selectores de ciudades
+            fillCitySelectors();
+            
+            // Configurar los eventos
+            findPathBtn.addEventListener('click', () => findPath(false));
+            stepByStepBtn.addEventListener('click', () => findPath(true));
+            nextStepBtn.addEventListener('click', executeNextStep);
+            resetBtn.addEventListener('click', resetVisualization);
+            toggleSearchTreeBtn.addEventListener('click', toggleSearchTree);
+            
+            // Inicialmente, establecer Arad como ciudad de inicio y Bucarest como destino
+            startCitySelect.value = 'Arad';
+            endCitySelect.value = 'Bucarest';
+        }
+
+        // Dibujar el mapa de Rumanía
+        function drawMap() {
+            mapSvg.setAttribute('width', '100%');
+            mapSvg.setAttribute('height', '500');
+            mapSvg.setAttribute('viewBox', '0 0 600 500');
+            
+            // Fondo del mapa
+            const background = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            background.setAttribute('width', '600');
+            background.setAttribute('height', '500');
+            background.setAttribute('fill', '#f8f9fa');
+            background.setAttribute('rx', '8');
+            mapSvg.appendChild(background);
+            
+            // Título del mapa
+            const title = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            title.setAttribute('x', '300');
+            title.setAttribute('y', '30');
+            title.setAttribute('text-anchor', 'middle');
+            title.setAttribute('font-weight', 'bold');
+            title.setAttribute('fill', '#6c757d');
+            title.textContent = 'Mapa de Rumanía';
+            mapSvg.appendChild(title);
+            
+            // Dibujar las conexiones
+            for (const road of roads) {
+                const startCity = cities[road.from];
+                const endCity = cities[road.to];
+                
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', startCity.x);
+                line.setAttribute('y1', startCity.y);
+                line.setAttribute('x2', endCity.x);
+                line.setAttribute('y2', endCity.y);
+                line.setAttribute('stroke', '#adb5bd');
+                line.setAttribute('stroke-width', '2');
+                line.id = `road-${road.from}-${road.to}`;
+                mapSvg.appendChild(line);
+                
+                // Añadir el peso (distancia) en el medio de la línea
+                const textX = (startCity.x + endCity.x) / 2;
+                const textY = (startCity.y + endCity.y) / 2 - 5;
+                
+                // Fondo para el texto
+                const textBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                textBg.setAttribute('x', textX - 10);
+                textBg.setAttribute('y', textY - 10);
+                textBg.setAttribute('width', '20');
+                textBg.setAttribute('height', '16');
+                textBg.setAttribute('fill', 'white');
+                textBg.setAttribute('rx', '3');
+                textBg.setAttribute('opacity', '0.8');
+                mapSvg.appendChild(textBg);
+                
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', textX);
+                text.setAttribute('y', textY);
+                text.setAttribute('class', 'edge-weight');
+                text.setAttribute('text-anchor', 'middle');
+                text.textContent = road.distance;
+                mapSvg.appendChild(text);
+            }
+            
+            // Dibujar las ciudades
+            for (const cityName in cities) {
+                const city = cities[cityName];
+                
+                // Círculo para la ciudad
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', city.x);
+                circle.setAttribute('cy', city.y);
+                circle.setAttribute('r', cityName === 'Bucarest' ? '9' : '7');
+                circle.setAttribute('fill', cityName === 'Bucarest' ? '#dc3545' : '#0d6efd');
+                circle.setAttribute('stroke', 'white');
+                circle.setAttribute('stroke-width', '2');
+                circle.setAttribute('id', `city-${cityName}`);
+                mapSvg.appendChild(circle);
+                
+                // Fondo para la etiqueta
+                const textBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                const labelWidth = cityName.length * 6 + 6;
+                textBg.setAttribute('x', city.x - labelWidth / 2);
+                textBg.setAttribute('y', city.y - 25);
+                textBg.setAttribute('width', labelWidth);
+                textBg.setAttribute('height', '16');
+                textBg.setAttribute('fill', 'white');
+                textBg.setAttribute('rx', '3');
+                textBg.setAttribute('opacity', '0.8');
+                mapSvg.appendChild(textBg);
+                
+                // Etiqueta de la ciudad
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', city.x);
+                text.setAttribute('y', city.y - 15);
+                text.setAttribute('class', 'city-label');
+                text.setAttribute('text-anchor', 'middle');
+                text.setAttribute('fill', cityName === 'Bucarest' ? '#dc3545' : '#0d6efd');
+                text.textContent = cityName;
+                mapSvg.appendChild(text);
+            }
+        }
+
+        // Llenar la tabla de heurísticas
+        function fillHeuristicTable() {
+            const sortedCities = Object.keys(heuristic).sort((a, b) => heuristic[a] - heuristic[b]);
+            
+            for (const city of sortedCities) {
+                const row = document.createElement('tr');
+                const cityCell = document.createElement('td');
+                const heuristicCell = document.createElement('td');
+                
+                cityCell.textContent = city;
+                
+                const badgeSpan = document.createElement('span');
+                badgeSpan.className = city === 'Bucarest' ? 
+                    'badge bg-success rounded-pill' : 
+                    'badge bg-purple rounded-pill';
+                badgeSpan.style.backgroundColor = city === 'Bucarest' ? '' : '#6f42c1';
+                badgeSpan.textContent = heuristic[city];
+                
+                heuristicCell.appendChild(badgeSpan);
+                heuristicCell.classList.add('text-center');
+                
+                row.appendChild(cityCell);
+                row.appendChild(heuristicCell);
+                heuristicTable.appendChild(row);
+            }
+        }
+
+        // Llenar los selectores de ciudades
+        function fillCitySelectors() {
+            for (const city in cities) {
+                const startOption = document.createElement('option');
+                const endOption = document.createElement('option');
+                
+                startOption.value = city;
+                startOption.textContent = city;
+                
+                endOption.value = city;
+                endOption.textContent = city;
+                
+                startCitySelect.appendChild(startOption);
+                endCitySelect.appendChild(endOption);
+            }
+        }
+
+        // Alternar la visualización del árbol de búsqueda
+        function toggleSearchTree() {
+            searchTreeContainer.classList.toggle('collapsed');
+            const isCollapsed = searchTreeContainer.classList.contains('collapsed');
+            toggleSearchTreeBtn.innerHTML = isCollapsed ? 
+                '<i class="bi bi-diagram-3"></i> Mostrar Árbol' : 
+                '<i class="bi bi-diagram-3"></i> Ocultar Árbol';
+        }
+
+        // Iniciar la búsqueda de la ruta
+        function findPath(isStepByStep) {
+            resetVisualization();
+            
+            const startCity = startCitySelect.value;
+            const endCity = endCitySelect.value;
+            
+            if (startCity === endCity) {
+                alert('La ciudad de inicio y destino no pueden ser la misma.');
+                return;
+            }
+            
+            stepByStepMode = isStepByStep;
+            
+            if (stepByStepMode) {
+                // Iniciar el modo paso a paso
+                nextStepBtn.disabled = false;
+                findPathBtn.disabled = true;
+                stepByStepBtn.disabled = true;
+                
+                // Configurar el estado inicial
+                openSet = [{ 
+                    city: startCity, 
+                    f: heuristic[startCity], 
+                    g: 0, 
+                    h: heuristic[startCity], 
+                    parent: null 
+                }];
+                
+                searchTreeSteps.push({
+                    description: `Inicialización: Añadiendo ${startCity} al conjunto abierto.`,
+                    openSet: [...openSet],
+                    closedSet: [...closedSet]
+                });
+                
+                displaySearchTree();
+            } else {
+                // Ejecutar el algoritmo A* completo de una vez
+                const result = aStar(startCity, endCity);
+                
+                if (result) {
+                    displayPath(result);
+                } else {
+                    pathResultDiv.innerHTML = 'No se encontró una ruta.';
+                }
+            }
+        }
+
+        // Ejecutar el siguiente paso en el modo paso a paso
+        function executeNextStep() {
+            const endCity = endCitySelect.value;
+            
+            if (pathFound) {
+                nextStepBtn.disabled = true;
+                return;
+            }
+            
+            if (openSet.length === 0) {
+                searchTreeSteps.push({
+                    description: "No se encontró una ruta hasta el destino.",
+                    openSet: [],
+                    closedSet: [...closedSet]
+                });
+                
+                pathResultDiv.innerHTML = 'No se encontró una ruta.';
+                nextStepBtn.disabled = true;
+                displaySearchTree();
+                return;
+            }
+            
+            // Ordenar el conjunto abierto por valor f (menor a mayor)
+            openSet.sort((a, b) => a.f - b.f);
+            
+            // Obtener el nodo con menor valor f
+            currentNode = openSet.shift();
+            
+            // Añadir el nodo actual al conjunto cerrado
+            closedSet.push(currentNode);
+            
+            // Verificar si hemos llegado al destino
+            if (currentNode.city === endCity) {
+                pathFound = true;
+                
+                searchTreeSteps.push({
+                    description: `¡Destino alcanzado! ${currentNode.city} es el objetivo.`,
+                    openSet: [...openSet],
+                    closedSet: [...closedSet]
+                });
+                
+                const path = reconstructPath(currentNode);
+                displayPath({ path: path, cost: currentNode.g });
+                
+                nextStepBtn.disabled = true;
+                displaySearchTree();
+                return;
+            }
+            
+            // Explorar los vecinos
+            for (const neighbor of graph[currentNode.city]) {
+                // Verificar si el vecino ya está en el conjunto cerrado
+                if (closedSet.some(node => node.city === neighbor.city)) {
+                    continue;
+                }
+                
+                // Calcular el nuevo costo g
+                const tentativeG = currentNode.g + neighbor.distance;
+                
+                // Buscar si el vecino ya está en el conjunto abierto
+                const neighborInOpenSet = openSet.find(node => node.city === neighbor.city);
+                
+                if (!neighborInOpenSet) {
+                    // Si el vecino no está en el conjunto abierto, añadirlo
+                    const h = heuristic[neighbor.city];
+                    openSet.push({
+                        city: neighbor.city,
+                        g: tentativeG,
+                        h: h,
+                        f: tentativeG + h,
+                        parent: currentNode
+                    });
+                    
+                    // Resaltar en el mapa
+                    highlightCity(neighbor.city, '#ff9800');
+                } else if (tentativeG < neighborInOpenSet.g) {
+                    // Si encontramos un camino mejor, actualizar el vecino
+                    neighborInOpenSet.g = tentativeG;
+                    neighborInOpenSet.f = tentativeG + neighborInOpenSet.h;
+                    neighborInOpenSet.parent = currentNode;
+                }
+            }
+            
+            // Destacar el nodo actual en el mapa
+            highlightCity(currentNode.city, '#e74c3c');
+            
+            // Registrar este paso
+            searchTreeSteps.push({
+                description: `Explorando ${currentNode.city} (g=${currentNode.g}, h=${currentNode.h}, f=${currentNode.f}).`,
+                openSet: [...openSet],
+                closedSet: [...closedSet]
+            });
+            
+            displaySearchTree();
+        }
+
+        // Implementación del algoritmo A*
+        function aStar(start, end) {
+            // Conjunto abierto (nodos a explorar)
+            const openSet = [{ 
+                city: start, 
+                f: heuristic[start], 
+                g: 0, 
+                h: heuristic[start], 
+                parent: null 
+            }];
+            
+            // Conjunto cerrado (nodos ya explorados)
+            const closedSet = [];
+            
+            while (openSet.length > 0) {
+                // Ordenar el conjunto abierto por valor f (menor a mayor)
+                openSet.sort((a, b) => a.f - b.f);
+                
+                // Obtener el nodo con menor valor f
+                const current = openSet.shift();
+                
+                // Añadir el nodo actual al conjunto cerrado
+                closedSet.push(current);
+                
+                // Verificar si hemos llegado al destino
+                if (current.city === end) {
+                    // Reconstruir y devolver el camino
+                    const path = reconstructPath(current);
+                    return { path: path, cost: current.g };
+                }
+                
+                // Explorar los vecinos
+                for (const neighbor of graph[current.city]) {
+                    // Verificar si el vecino ya está en el conjunto cerrado
+                    if (closedSet.some(node => node.city === neighbor.city)) {
+                        continue;
+                    }
+                    
+                    // Calcular el nuevo costo g
+                    const tentativeG = current.g + neighbor.distance;
+                    
+                    // Buscar si el vecino ya está en el conjunto abierto
+                    const neighborInOpenSet = openSet.find(node => node.city === neighbor.city);
+                    
+                    if (!neighborInOpenSet) {
+                        // Si el vecino no está en el conjunto abierto, añadirlo
+                        const h = heuristic[neighbor.city];
+                        openSet.push({
+                            city: neighbor.city,
+                            g: tentativeG,
+                            h: h,
+                            f: tentativeG + h,
+                            parent: current
+                        });
+                    } else if (tentativeG < neighborInOpenSet.g) {
+                        // Si encontramos un camino mejor, actualizar el vecino
+                        neighborInOpenSet.g = tentativeG;
+                        neighborInOpenSet.f = tentativeG + neighborInOpenSet.h;
+                        neighborInOpenSet.parent = current;
+                    }
+                }
+            }
+            
+            // No se encontró un camino
+            return null;
+        }
+
+        // Reconstruir el camino desde el nodo final hasta el inicio
+        function reconstructPath(endNode) {
+            const path = [];
+            let current = endNode;
+            
+            while (current) {
+                path.unshift(current.city);
+                current = current.parent;
+            }
+            
+            return path;
+        }
+
+        // Mostrar el camino en el mapa y en los resultados
+        function displayPath(result) {
+            const path = result.path;
+            const cost = result.cost;
+            
+            // Mostrar el camino en texto
+            pathResultDiv.innerHTML = `
+                <div class="alert alert-success" role="alert">
+                    <h4 class="alert-heading"><i class="bi bi-check-circle-fill"></i> ¡Ruta encontrada!</h4>
+                    <p class="fs-5">${path.join(' <i class="bi bi-arrow-right"></i> ')}</p>
+                </div>`;
+            costResultDiv.innerHTML = `
+                <div class="d-flex align-items-center">
+                    <div class="p-2 bg-primary text-white rounded-3 me-2">
+                        <i class="bi bi-bar-chart-fill"></i>
+                    </div>
+                    <div>
+                        <span class="fw-bold">Costo total:</span> 
+                        <span class="badge bg-primary rounded-pill fs-6">${cost}</span>
+                    </div>
+                </div>`;
+            
+            // Resaltar el camino en el mapa
+            for (let i = 0; i < path.length - 1; i++) {
+                const from = path[i];
+                const to = path[i + 1];
+                
+                // Resaltar las ciudades
+                highlightCity(from, '#198754');
+                
+                // Resaltar el camino
+                const roadId1 = `road-${from}-${to}`;
+                const roadId2 = `road-${to}-${from}`;
+                
+                const road = document.getElementById(roadId1) || document.getElementById(roadId2);
+                
+                if (road) {
+                    road.setAttribute('stroke', '#dc3545');
+                    road.setAttribute('stroke-width', '4');
+                }
+            }
+            
+            // Resaltar la última ciudad (destino)
+            highlightCity(path[path.length - 1], '#198754');
+        }
+
+        // Resaltar una ciudad en el mapa
+        function highlightCity(cityName, color) {
+            const circle = document.getElementById(`city-${cityName}`);
+            if (circle) {
+                circle.setAttribute('fill', color);
+                circle.setAttribute('r', '8');
+            }
+        }
+
+        // Mostrar el árbol de búsqueda
+        function displaySearchTree() {
+            let output = '';
+            
+            for (let i = 0; i <= stepIndex; i++) {
+                const step = searchTreeSteps[i];
+                
+                output += `<span class="fw-bold text-primary">Paso ${i + 1}:</span> ${step.description}\n`;
+                
+                output += `  <span class="fw-bold text-success">Conjunto abierto:</span> [`;
+                if (step.openSet.length > 0) {
+                    output += step.openSet.map(node => 
+                        `${node.city}(g=${node.g}, h=${node.h}, f=${node.f})`
+                    ).join(', ');
+                } else {
+                    output += 'vacío';
+                }
+                output += ']\n';
+                
+                output += `  <span class="fw-bold text-danger">Conjunto cerrado:</span> [`;
+                if (step.closedSet.length > 0) {
+                    output += step.closedSet.map(node => node.city).join(', ');
+                } else {
+                    output += 'vacío';
+                }
+                output += ']\n\n';
+            }
+            
+            searchTreeDiv.innerHTML = output;
+            searchTreeDiv.scrollTop = searchTreeDiv.scrollHeight;
+            stepIndex++;
+        }
+
+        // Reiniciar la visualización
+        function resetVisualization() {
+            // Reiniciar los botones
+            findPathBtn.disabled = false;
+            stepByStepBtn.disabled = false;
+            nextStepBtn.disabled = true;
+            
+            // Limpiar resultados
+            pathResultDiv.innerHTML = '';
+            costResultDiv.innerHTML = '';
+            searchTreeDiv.textContent = '';
+            
+            // Reiniciar el mapa
+            for (const cityName in cities) {
+                const circle = document.getElementById(`city-${cityName}`);
+                if (circle) {
+                    circle.setAttribute('fill', '#3498db');
+                    circle.setAttribute('r', '7');
+                }
+            }
+            
+            for (const road of roads) {
+                const roadId1 = `road-${road.from}-${road.to}`;
+                const roadId2 = `road-${road.to}-${road.from}`;
+                
+                const roadElem = document.getElementById(roadId1) || document.getElementById(roadId2);
+                
+                if (roadElem) {
+                    roadElem.setAttribute('stroke', '#999');
+                    roadElem.setAttribute('stroke-width', '2');
+                }
+            }
+            
+            // Reiniciar variables globales
+            openSet = [];
+            closedSet = [];
+            pathFound = false;
+            currentNode = null;
+            searchTreeSteps = [];
+            stepIndex = 0;
+        }
+
+        // Iniciar la aplicación cuando se cargue la página
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
